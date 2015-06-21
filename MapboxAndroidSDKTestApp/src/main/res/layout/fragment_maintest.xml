@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-				android:orientation="vertical"
-				android:layout_width="fill_parent"
-				android:layout_height="fill_parent">
-
+    xmlns:mapbox="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent">
 
 	<com.mapbox.mapboxsdk.views.MapView
 			android:id="@+id/mapview"
 			android:layout_width="fill_parent"
-			android:layout_height="fill_parent">
-	</com.mapbox.mapboxsdk.views.MapView>
+			android:layout_height="fill_parent"
+            mapbox:accessToken="@string/testAccessToken"/>
 
 	<LinearLayout
 			android:id="@+id/buttonsrow"
@@ -24,28 +24,21 @@
 				android:layout_width="fill_parent"
 				android:layout_height="wrap_content"
 				android:text="Sat"
-				android:layout_weight="0.25" android:layout_margin="-5dp"
+				android:layout_weight="0.33" android:layout_margin="-5dp"
 				/>
 		<Button
 				android:id="@+id/terbut"
 				android:layout_width="fill_parent"
 				android:layout_height="wrap_content"
 				android:text="Terr"
-				android:layout_weight="0.25" android:layout_margin="-5dp"
+				android:layout_weight="0.33" android:layout_margin="-5dp"
 				/>
 		<Button
 				android:id="@+id/strbut"
 				android:layout_width="fill_parent"
 				android:layout_height="wrap_content"
 				android:text="Street"
-				android:layout_weight="0.25"
-				/>
-		<Button
-				android:id="@+id/mbTilesBut"
-				android:layout_width="fill_parent"
-				android:layout_height="wrap_content"
-				android:text="MBTile"
-				android:layout_weight="0.25"
+				android:layout_weight="0.33"
 				/>
 
 <!--

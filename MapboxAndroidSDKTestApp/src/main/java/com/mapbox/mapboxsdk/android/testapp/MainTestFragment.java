@@ -13,7 +13,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-
 import com.mapbox.mapboxsdk.api.ILatLng;
 import com.mapbox.mapboxsdk.geometry.BoundingBox;
 import com.mapbox.mapboxsdk.geometry.LatLng;
@@ -22,9 +21,7 @@ import com.mapbox.mapboxsdk.overlay.Marker;
 import com.mapbox.mapboxsdk.overlay.PathOverlay;
 import com.mapbox.mapboxsdk.overlay.UserLocationOverlay;
 import com.mapbox.mapboxsdk.tileprovider.tilesource.ITileLayer;
-import com.mapbox.mapboxsdk.tileprovider.tilesource.MBTilesLayer;
 import com.mapbox.mapboxsdk.tileprovider.tilesource.MapboxTileLayer;
-import com.mapbox.mapboxsdk.tileprovider.tilesource.TileLayer;
 import com.mapbox.mapboxsdk.tileprovider.tilesource.WebSourceTileLayer;
 import com.mapbox.mapboxsdk.views.MapView;
 import com.mapbox.mapboxsdk.views.util.TilesLoadedListener;
@@ -35,7 +32,6 @@ public class MainTestFragment extends Fragment {
     private String satellite = "brunosan.map-cyglrrfu";
     private String street = "examples.map-i87786ca";
     private String terrain = "examples.map-zgrqqx0w";
-    private final String mbTile = "test.MBTiles";
     private String currentLayer = "";
 
     @Override
@@ -49,6 +45,9 @@ public class MainTestFragment extends Fragment {
         currentLayer = "terrain";
         mv.setUserLocationEnabled(true)
             .setUserLocationTrackingMode(UserLocationOverlay.TrackingMode.FOLLOW);
+        // Set a reasonable user location zoom level
+        mv.setUserLocationRequiredZoom(16);
+
         /*
         // Original GeoJSON Test that caus es crash when Hardware Acceleration when enabled in TestApp
         mv.loadFromGeoJSONURL("https://gist.githubusercontent.com/tmcw/4a6f5fa40ab9a6b2f163/raw/b1ee1e445225fc0a397e2605feda7da74c36161b/map.geojson");
@@ -68,6 +67,10 @@ public class MainTestFragment extends Fragment {
         mv.addMarker(m);
 
         m = new Marker(mv, "Athens", "Greece", new LatLng(37.97885, 23.71399));
+        mv.addMarker(m);
+
+        m = new Marker(mv, "Milwaukee", "Wisconsin", new LatLng(43.04506, -87.92217));
+        m.setIcon(new Icon(getActivity(), Icon.Size.LARGE, "city", "0000FF"));
         mv.addMarker(m);
 
         /*
@@ -106,17 +109,6 @@ public class MainTestFragment extends Fragment {
                 }
             }
         });
-        Button mbTileBut = changeButtonTypeface((Button) view.findViewById(R.id.mbTilesBut));
-        mbTileBut.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (!currentLayer.equals(mbTile)) {
-                    replaceMapView(mbTile);
-                    currentLayer = mbTile;
-                }
-            }
-        });
-
 
         /*
            Button altBut = changeButtonTypeface((Button) view.findViewById(R.id.strAltMap));
@@ -195,47 +187,32 @@ public class MainTestFragment extends Fragment {
     protected void replaceMapView(String layer) {
         ITileLayer source;
         BoundingBox box;
-        if (layer.toLowerCase().endsWith("mbtiles")) {
-            TileLayer mbTileLayer = new MBTilesLayer(getActivity(), layer);
-            //            mv.setTileSource(mbTileLayer);
-            mv.setTileSource(new ITileLayer[] {
-                mbTileLayer, new WebSourceTileLayer("mapquest",
-                    "http://otile1.mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.png").setName(
-                        "MapQuest Open Aerial")
-                        .setAttribution("Tiles courtesy of MapQuest and OpenStreetMap contributors.")
-                .setMinimumZoomLevel(1)
-                .setMaximumZoomLevel(18)
-            });
-            box = mbTileLayer.getBoundingBox();
-        } else {
-            if (layer.equalsIgnoreCase("OpenStreetMap")) {
-                source = new WebSourceTileLayer("openstreetmap",
-                        "http://tile.openstreetmap.org/{z}/{x}/{y}.png").setName("OpenStreetMap")
+        if (layer.equalsIgnoreCase("OpenStreetMap")) {
+            source = new WebSourceTileLayer("openstreetmap",
+                    "http://tile.openstreetmap.org/{z}/{x}/{y}.png").setName("OpenStreetMap")
                     .setAttribution("© OpenStreetMap Contributors")
                     .setMinimumZoomLevel(1)
                     .setMaximumZoomLevel(18);
-            } else if (layer.equalsIgnoreCase("OpenSeaMap")) {
-                source = new WebSourceTileLayer("openstreetmap",
-                        "http://tile.openstreetmap.org/seamark/{z}/{x}/{y}.png").setName(
-                            "OpenStreetMap")
-                            .setAttribution("© OpenStreetMap Contributors")
-                            .setMinimumZoomLevel(1)
-                            .setMaximumZoomLevel(18);
-            } else if (layer.equalsIgnoreCase("mapquest")) {
-                source = new WebSourceTileLayer("mapquest",
-                        "http://otile1.mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.png").setName(
-                            "MapQuest Open Aerial")
-                            .setAttribution(
-                                    "Tiles courtesy of MapQuest and OpenStreetMap contributors.")
-                            .setMinimumZoomLevel(1)
-                            .setMaximumZoomLevel(18);
-            } else {
-                source = new MapboxTileLayer(layer);
-            }
-            mv.setTileSource(source);
-            box = source.getBoundingBox();
+        } else if (layer.equalsIgnoreCase("OpenSeaMap")) {
+            source = new WebSourceTileLayer("openstreetmap",
+                    "http://tile.openstreetmap.org/seamark/{z}/{x}/{y}.png").setName(
+                    "OpenStreetMap")
+                    .setAttribution("© OpenStreetMap Contributors")
+                    .setMinimumZoomLevel(1)
+                    .setMaximumZoomLevel(18);
+        } else if (layer.equalsIgnoreCase("mapquest")) {
+            source = new WebSourceTileLayer("mapquest",
+                    "http://otile1.mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.png").setName(
+                    "MapQuest Open Aerial")
+                    .setAttribution(
+                            "Tiles courtesy of MapQuest and OpenStreetMap contributors.")
+                    .setMinimumZoomLevel(1)
+                    .setMaximumZoomLevel(18);
+        } else {
+            source = new MapboxTileLayer(layer);
         }
-        //        mv.setScrollableAreaLimit(mv.getTileProvider().getBoundingBox());
+        mv.setTileSource(source);
+        box = source.getBoundingBox();
         mv.setScrollableAreaLimit(box);
         mv.setMinZoomLevel(mv.getTileProvider().getMinimumZoomLevel());
         mv.setMaxZoomLevel(mv.getTileProvider().getMaximumZoomLevel());

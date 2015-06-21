@@ -6,6 +6,8 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.text.TextUtils;
 import android.util.Log;
+
+import com.mapbox.mapboxsdk.constants.MapboxConstants;
 import com.mapbox.mapboxsdk.tileprovider.MapTile;
 import com.mapbox.mapboxsdk.tileprovider.MapTileCache;
 import com.mapbox.mapboxsdk.tileprovider.modules.MapTileDownloader;
@@ -20,7 +22,7 @@ import uk.co.senab.bitmapcache.CacheableBitmapDrawable;
 /**
  * An implementation of {@link TileLayer} that pulls tiles from the internet.
  */
-public class WebSourceTileLayer extends TileLayer {
+public class WebSourceTileLayer extends TileLayer implements MapboxConstants {
     private static final String TAG = "WebSourceTileLayer";
 
     // Tracks the number of threads active in the getBitmapFromURL method.
@@ -42,9 +44,9 @@ public class WebSourceTileLayer extends TileLayer {
 
     @Override
     public TileLayer setURL(final String aUrl) {
-        if (aUrl.contains(String.format("http%s://", (mEnableSSL ? "" : "s")))) {
-            super.setURL(aUrl.replace(String.format("http%s://", (mEnableSSL ? "" : "s")),
-                    String.format("http%s://", (mEnableSSL ? "s" : ""))));
+        if (aUrl.contains(String.format(MAPBOX_LOCALE, "http%s://", (mEnableSSL ? "" : "s")))) {
+            super.setURL(aUrl.replace(String.format(MAPBOX_LOCALE, "http%s://", (mEnableSSL ? "" : "s")),
+                    String.format(MAPBOX_LOCALE, "http%s://", (mEnableSSL ? "s" : ""))));
         } else {
             super.setURL(aUrl);
         }
@@ -103,11 +105,17 @@ public class WebSourceTileLayer extends TileLayer {
         if (downloader.isNetworkAvailable()) {
             TilesLoadedListener listener = downloader.getTilesLoadedListener();
 
-            String[] urls = getTileURLs(aTile, hdpi);
+            boolean tempHDPI = hdpi;
+            if (this instanceof MapboxTileLayer) {
+                tempHDPI = false;
+            }
+
+            String[] urls = getTileURLs(aTile, tempHDPI);
             CacheableBitmapDrawable result = null;
             Bitmap resultBitmap = null;
+            MapTileCache cache = downloader.getCache();
+
             if (urls != null) {
-                MapTileCache cache = downloader.getCache();
                 if (listener != null) {
                     listener.onTilesLoadStarted();
                 }
@@ -122,10 +130,7 @@ public class WebSourceTileLayer extends TileLayer {
                         resultBitmap = compositeBitmaps(bitmap, resultBitmap);
                     }
                 }
-                if (resultBitmap != null) {
-                    //get drawable by putting it into cache (memory and disk)
-                    result = cache.putTileBitmap(aTile, resultBitmap);
-                }
+
                 if (checkThreadControl()) {
                     if (listener != null) {
                         listener.onTilesLoaded();
@@ -133,14 +138,28 @@ public class WebSourceTileLayer extends TileLayer {
                 }
             }
 
-            if (result != null) {
-                TileLoadedListener listener2 = downloader.getTileLoadedListener();
-                result = listener2 != null ? listener2.onTileLoaded(result) : result;
+            TileLoadedListener listener2 = downloader.getTileLoadedListener();
+            if (listener2 != null) {
+                //create the CacheableBitmapDrawable object from the bitmap
+                result = cache.createCacheableBitmapDrawable(resultBitmap, aTile);
+                //pass it to onTileLoaded callback for customization, and return the customized CacheableBitmapDrawable object
+                result = listener2.onTileLoaded(result);
+
+                //convert the drawable updated in onTileLoaded callback to a bitmap
+                Bitmap bitmapToCache = Bitmap.createBitmap(result.getIntrinsicWidth(), result.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+                Canvas canvas = new Canvas(bitmapToCache);
+                result.setBounds(0, 0, result.getIntrinsicWidth(), result.getIntrinsicHeight());
+                result.draw(canvas);
+
+                cache.putTileBitmap(aTile, bitmapToCache);
+            } else {
+                if (resultBitmap != null) {
+                    //get drawable by putting it into cache (memory and disk)
+                    result = cache.putTileBitmap(aTile, resultBitmap);
+                }
             }
 
             return result;
-        } else {
-            Log.d(TAG, "Skipping tile " + aTile.toString() + " due to NetworkAvailabilityCheck.");
         }
         return null;
     }
@@ -156,7 +175,6 @@ public class WebSourceTileLayer extends TileLayer {
      */
     public Bitmap getBitmapFromURL(MapTile mapTile, final String url, final MapTileCache aCache) {
         // We track the active threads here, every exit point should decrement this value.
-        Log.d(getClass().getCanonicalName(), "getBitmapFormURL() called with url = '" + url + "'");
         activeThreads.incrementAndGet();
 
         if (TextUtils.isEmpty(url)) {
